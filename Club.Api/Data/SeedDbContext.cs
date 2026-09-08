@@ -426,7 +426,7 @@ public static class SeedDbContext
             await dbContext.Validation.AddAsync(validation1, ct);
             await dbContext.Validation.AddAsync(validation2, ct);
 
-            // Create hourly slots for the next week with slight daily variation
+            // Create slots for the next week with slight daily variation (golf every 10 minutes, others hourly)
             var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
             var resources = new[] { resource1, resource2, resource3, resource4 };
             var random = new Random();
@@ -463,12 +463,16 @@ public static class SeedDbContext
                 resourceStartHour += random.Next(0, 2);
             }
 
-            for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
-            {
-                var startTime = day.AddHours(resourceStartHour + slotIndex);
-                var endTime = startTime.AddHours(1);
+            var isGolf = resource.Name is "1st" or "10th";
+            var slotIntervalMinutes = isGolf ? 10 : 60;
+            var resourceSlotCount = isGolf ? slotCount * (60 / slotIntervalMinutes) : slotCount;
 
-                if (resource.Name == "1st" || resource.Name == "10th")
+            for (int slotIndex = 0; slotIndex < resourceSlotCount; slotIndex++)
+            {
+                var startTime = day.AddHours(resourceStartHour).AddMinutes(slotIndex * slotIntervalMinutes);
+                var endTime = startTime.AddMinutes(slotIntervalMinutes);
+
+                if (isGolf)
                 {
                     var id = Guid.CreateVersion7();
                     dbContext.Slot.Add(
